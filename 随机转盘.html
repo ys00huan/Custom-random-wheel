@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>幸运转盘 · 无文字结果</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            color: #fff;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 30px 35px 40px;
+            border-radius: 32px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            max-width: 560px;
+            width: 100%;
+        }
+        h1 {
+            margin: 0 0 6px 0;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, #f7971e, #ffd200);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+        .subtitle {
+            margin: 0 0 18px 0;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 4px;
+        }
+        .wheel-container {
+            position: relative;
+            width: 380px;
+            height: 380px;
+            margin: 10px auto 0;
+            touch-action: none;
+        }
+        #wheelCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.85), 0 0 0 14px rgba(255, 215, 0, 0.35), 0 12px 40px rgba(0, 0, 0, 0.6);
+            transition: transform 4.5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            display: block;
+            background: #2c3e50;
+        }
+        .pointer {
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            width: 0;
+            height: 0;
+            border-left: 28px solid transparent;
+            border-right: 28px solid transparent;
+            border-bottom: 56px solid #ff4757;
+            filter: drop-shadow(0 6px 12px rgba(255, 71, 87, 0.7));
+            transition: filter 0.2s;
+        }
+        .pointer.active {
+            filter: drop-shadow(0 0 20px rgba(255, 71, 87, 0.9)) drop-shadow(0 6px 12px rgba(255, 71, 87, 0.5));
+        }
+        .center-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ffd700, #f7971e);
+            box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.6), 0 4px 20px rgba(0, 0, 0, 0.4);
+            z-index: 15;
+            pointer-events: none;
+            border: 2px solid #fff;
+        }
+        .center-dot::after {
+            content: "GO";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 22px;
+            font-weight: 900;
+            color: #2c3e50;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+        }
+        button {
+            margin-top: 22px;
+            padding: 14px 48px;
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff;
+            border: none;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(238, 90, 36, 0.45);
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+        button::after {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        button:hover:not(:disabled)::after {
+            opacity: 1;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 32px rgba(238, 90, 36, 0.55);
+        }
+        button:active:not(:disabled) {
+            transform: scale(0.96);
+        }
+        button:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.6;
+        }
+
+        /* 奖项&权重面板 */
+        .prize-panel {
+            margin-top: 28px;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 20px;
+            padding: 18px 20px 22px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .prize-panel h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            letter-spacing: 1px;
+        }
+        .prize-panel textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+            line-height: 1.7;
+            transition: border-color 0.3s;
+            outline: none;
+        }
+        .prize-panel textarea:focus {
+            border-color: rgba(255, 215, 0, 0.4);
+        }
+
+        .weight-list {
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .weight-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 6px 12px 6px 16px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: background 0.2s;
+        }
+        .weight-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .weight-item .label {
+            flex: 1;
+            font-size: 15px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .weight-item input[type="number"] {
+            width: 70px;
+            padding: 4px 6px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .weight-item input[type="number"]:focus {
+            border-color: #ffd700;
+        }
+        .weight-item .percent {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.4);
+            min-width: 28px;
+        }
+        .weight-item .bar-bg {
+            flex: 0 0 60px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .weight-item .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #f7971e);
+            border-radius: 6px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .btn-row button {
+            flex: 1;
+            margin: 0;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            min-width: 80px;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: none;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .btn-row button:hover:not(:disabled) {
+            background: rgba(255, 215, 0, 0.18);
+            border-color: rgba(255, 215, 0, 0.3);
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-row button.primary-btn {
+            background: linear-gradient(135deg, #f7971e, #ffd200);
+            color: #1a1a2e;
+            border-color: transparent;
+            box-shadow: 0 4px 16px rgba(255, 215, 0, 0.25);
+        }
+        .btn-row button.primary-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #ffa825, #ffe033);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(255, 215, 0, 0.35);
+        }
+        .prize-count {
+            margin-top: 8px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.35);
+            text-align: right;
+        }
+
+        /* 结果区域已移除，此样式仅占位 */
+        .result-placeholder {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px 16px 28px;
+            }
+            .wheel-container {
+                width: 290px;
+                height: 290px;
+            }
+            .center-dot {
+                width: 52px;
+                height: 52px;
+            }
+            .center-dot::after {
+                font-size: 17px;
+            }
+            .pointer {
+                border-left-width: 20px;
+                border-right-width: 20px;
+                border-bottom-width: 44px;
+                top: -10px;
+            }
+            h1 {
+                font-size: 26px;
+            }
+            button {
+                padding: 12px 32px;
+                font-size: 18px;
+            }
+            .weight-item input[type="number"] {
+                width: 60px;
+                font-size: 14px;
+            }
+            .weight-item .bar-bg {
+                flex-basis: 40px;
+            }
+        }
+        @media (max-width: 380px) {
+            .wheel-container {
+                width: 230px;
+                height: 230px;
+            }
+            .center-dot {
+                width: 40px;
+                height: 40px;
+            }
+            .center-dot::after {
+                font-size: 13px;
+            }
+            .pointer {
+                border-left-width: 16px;
+                border-right-width: 16px;
+                border-bottom-width: 34px;
+                top: -8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🎉 幸运转盘</h1>
+        <div class="subtitle">✦ 自定义权重 · 无结果提示 ✦</div>
+
+        <div class="wheel-container">
+            <canvas id="wheelCanvas" width="600" height="600"></canvas>
+            <div class="pointer" id="pointerEl"></div>
+            <div class="center-dot"></div>
+        </div>
+
+        <button id="spinBtn">🎯 转 动</button>
+
+        <div class="prize-panel">
+            <h3>📋 奖项设置（每行一个）</h3>
+            <textarea id="prizesInput" rows="4">一等奖
+二等奖
+三等奖
+谢谢参与
+四等奖
+五等奖
+六等奖
+再来一次</textarea>
+
+            <div style="margin-top: 14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:14px; color:rgba(255,255,255,0.5);">🎚️ 权重（百分比，总和自动归一化）</span>
+                    <span style="font-size:13px; color:rgba(255,255,255,0.3);" id="totalPercent">总和: 100%</span>
+                </div>
+                <div class="weight-list" id="weightContainer">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button class="primary-btn" id="updateBtn">🔄 更新转盘</button>
+                <button id="resetBtn">↺ 重置</button>
+            </div>
+            <div class="prize-count" id="prizeCount">共 8 个奖项</div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // DOM 引用
+        // ============================================================
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        const prizesInput = document.getElementById('prizesInput');
+        const updateBtn = document.getElementById('updateBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const prizeCount = document.getElementById('prizeCount');
+        const pointerEl = document.getElementById('pointerEl');
+        const weightContainer = document.getElementById('weightContainer');
+        const totalPercentEl = document.getElementById('totalPercent');
+
+        // ============================================================
+        // 数据
+        // ============================================================
+        let prizes = [];          // [{ name, weight }]
+        let totalRotation = 0;
+        let isSpinning = false;
+
+        const COLOR_PALETTE = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+            '#FFD93D', '#D4A5A5', '#9B59B6', '#3498DB',
+            '#F39C12', '#1ABC9C', '#E74C3C', '#2ECC71',
+            '#E67E22', '#9B59B6', '#1ABC9C', '#F1C40F'
+        ];
+
+        // ============================================================
+        // 工具：归一化权重
+        // ============================================================
+        function normalizeWeights(items) {
+            const total = items.reduce((sum, p) => sum + p.weight, 0);
+            if (total === 0) return items.map(p => ({ ...p, weight: 0 }));
+            return items.map(p => ({ ...p, weight: p.weight / total }));
+        }
+
+        // ============================================================
+        // 绘制转盘（根据权重）
+        // ============================================================
+        function drawWheel() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+            const radius = Math.min(w, h) / 2 - 12;
+            const items = normalizeWeights(prizes);
+            const count = items.length;
+            if (count === 0) return;
+
+            ctx.clearRect(0, 0, w, h);
+
+            let startAngle = 0;
+            for (let i = 0; i < count; i++) {
+                const sliceAngle = items[i].weight * 2 * Math.PI;
+                if (sliceAngle === 0) continue;
+                const endAngle = startAngle + sliceAngle;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius, startAngle, endAngle);
+                ctx.closePath();
+                const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                // 文字
+                const midAngle = startAngle + sliceAngle / 2;
+                const textR = radius * 0.68;
+                const tx = cx + Math.cos(midAngle) * textR;
+                const ty = cy + Math.sin(midAngle) * textR;
+                const label = items[i].name;
+                const display = label.length > 7 ? label.slice(0, 6) + '…' : label;
+
+                ctx.save();
+                ctx.translate(tx, ty);
+                const shouldFlip = midAngle > Math.PI / 2 && midAngle < 3 * Math.PI / 2;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = 'bold 22px "Microsoft YaHei","PingFang SC",sans-serif';
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                ctx.shadowBlur = 8;
+                if (shouldFlip) {
+                    ctx.rotate(midAngle - Math.PI / 2);
+                    ctx.rotate(Math.PI);
+                } else {
+                    ctx.rotate(midAngle + Math.PI / 2);
+                }
+                ctx.fillStyle = '#fff';
+                ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                ctx.shadowBlur = 10;
+                ctx.fillText(display, 0, 0);
+                ctx.restore();
+
+                startAngle = endAngle;
+            }
+
+            // 装饰光晕
+            const grad = ctx.createRadialGradient(cx, cy, radius * 0.92, cx, cy, radius);
+            grad.addColorStop(0, 'rgba(255,255,255,0)');
+            grad.addColorStop(0.7, 'rgba(255,255,255,0)');
+            grad.addColorStop(1, 'rgba(255,255,255,0.12)');
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            const hl = ctx.createRadialGradient(cx - radius * 0.3, cy - radius * 0.3, 6, cx, cy, radius * 0.5);
+            hl.addColorStop(0, 'rgba(255,255,255,0.10)');
+            hl.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius * 0.5, 0, 2 * Math.PI);
+            ctx.fillStyle = hl;
+            ctx.fill();
+        }
+
+        // ============================================================
+        // 生成权重输入行
+        // ============================================================
+        function renderWeightInputs() {
+            weightContainer.innerHTML = '';
+            const total = prizes.reduce((s, p) => s + p.weight, 0) || 1;
+            prizes.forEach((p, idx) => {
+                const percent = ((p.weight / total) * 100).toFixed(1);
+                const div = document.createElement('div');
+                div.className = 'weight-item';
+                div.innerHTML = `
+                    <span class="label">${p.name}</span>
+                    <input type="number" min="0" max="100" step="0.1" value="${p.weight}" data-index="${idx}" />
+                    <span class="percent">${percent}%</span>
+                    <div class="bar-bg"><div class="bar-fill" style="width:${percent}%;"></div></div>
+                `;
+                weightContainer.appendChild(div);
+            });
+            updateTotalPercent();
+            // 绑定输入事件
+            weightContainer.querySelectorAll('input[type="number"]').forEach(inp => {
+                inp.addEventListener('input', function(e) {
+                    const idx = parseInt(this.dataset.index);
+                    let val = parseFloat(this.value);
+                    if (isNaN(val) || val < 0) val = 0;
+                    prizes[idx].weight = val;
+                    updateWeightBars();
+                });
+            });
+        }
+
+        function updateWeightBars() {
+            const total = prizes.reduce((s, p) => s + p.weight, 0) || 1;
+            const items = weightContainer.querySelectorAll('.weight-item');
+            items.forEach((item, idx) => {
+                const pct = ((prizes[idx].weight / total) * 100).toFixed(1);
+                const percentSpan = item.querySelector('.percent');
+                const barFill = item.querySelector('.bar-fill');
+                if (percentSpan) percentSpan.textContent = pct + '%';
+                if (barFill) barFill.style.width = pct + '%';
+            });
+            updateTotalPercent();
+        }
+
+        function updateTotalPercent() {
+            const total = prizes.reduce((s, p) => s + p.weight, 0);
+            const sum = total === 0 ? 0 : 100;
+            totalPercentEl.textContent = `总和: ${sum.toFixed(1)}%`;
+        }
+
+        // ============================================================
+        // 从文本读取奖项名称，初始化权重（均等）
+        // ============================================================
+        function loadPrizesFromText() {
+            const raw = prizesInput.value;
+            const names = raw.split(/\r?\n/).map(s => s.trim()).filter(s => s !== '');
+            if (names.length < 2) {
+                alert('至少需要 2 个奖项！');
+                return false;
+            }
+            const weight = 100 / names.length;
+            prizes = names.map(name => ({ name, weight }));
+            return true;
+        }
+
+        // ============================================================
+        // 更新转盘（读取权重并重绘）
+        // ============================================================
+        function updateWheel() {
+            if (isSpinning) return;
+            const raw = prizesInput.value;
+            const names = raw.split(/\r?\n/).map(s => s.trim()).filter(s => s !== '');
+            if (names.length < 2) {
+                alert('至少需要 2 个奖项！');
+                return;
+            }
+            if (names.length !== prizes.length) {
+                const weight = 100 / names.length;
+                prizes = names.map(name => ({ name, weight }));
+            } else {
+                const oldWeights = prizes.map(p => p.weight);
+                prizes = names.map((name, i) => ({ name, weight: oldWeights[i] || 0 }));
+            }
+            renderWeightInputs();
+            canvas.style.transition = 'none';
+            canvas.style.transform = 'rotate(0deg)';
+            totalRotation = 0;
+            drawWheel();
+            prizeCount.textContent = `共 ${prizes.length} 个奖项`;
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    canvas.style.transition = '';
+                });
+            });
+        }
+
+        // ============================================================
+        // 旋转核心（基于权重）— 无任何文字提示
+        // ============================================================
+        function spinWheel() {
+            if (isSpinning) return;
+            if (prizes.length < 2) {
+                alert('至少需要 2 个奖项！');
+                return;
+            }
+            // 同步权重
+            const inputs = weightContainer.querySelectorAll('input[type="number"]');
+            inputs.forEach(inp => {
+                const idx = parseInt(inp.dataset.index);
+                let val = parseFloat(inp.value);
+                if (isNaN(val) || val < 0) val = 0;
+                prizes[idx].weight = val;
+            });
+            const norm = normalizeWeights(prizes);
+            const totalWeight = norm.reduce((s, p) => s + p.weight, 0);
+            if (totalWeight === 0) {
+                alert('所有权重不能为零！');
+                return;
+            }
+
+            // 按权重随机选择
+            let rand = Math.random();
+            let cumulative = 0;
+            let winIndex = 0;
+            for (let i = 0; i < norm.length; i++) {
+                cumulative += norm[i].weight;
+                if (rand <= cumulative) {
+                    winIndex = i;
+                    break;
+                }
+            }
+
+            isSpinning = true;
+            spinBtn.disabled = true;
+            updateBtn.disabled = true;
+            pointerEl.classList.add('active');
+
+            const count = prizes.length;
+            // 计算目标扇区中心（基于权重累积角度）
+            let targetAngleDeg = 0;
+            let cumAngle = 0;
+            for (let i = 0; i < count; i++) {
+                const sliceAngle = norm[i].weight * 360;
+                if (i === winIndex) {
+                    targetAngleDeg = cumAngle + sliceAngle / 2;
+                    break;
+                }
+                cumAngle += sliceAngle;
+            }
+            // 指针在顶部（-90°），转盘需旋转 (targetAngleDeg + 90°)
+            const target = (targetAngleDeg + 90) % 360;
+
+            const currentMod = ((totalRotation % 360) + 360) % 360;
+            let delta = (target - currentMod + 360) % 360;
+            if (delta < 0.5) delta += 360;
+            const extraSpins = 5 + Math.floor(Math.random() * 4);
+            const targetTotal = totalRotation + delta + extraSpins * 360;
+
+            canvas.style.transition = 'transform 4.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+            canvas.style.transform = `rotate(${targetTotal}deg)`;
+            totalRotation = targetTotal;
+
+            setTimeout(() => {
+                isSpinning = false;
+                spinBtn.disabled = false;
+                updateBtn.disabled = false;
+                pointerEl.classList.remove('active');
+            }, 4600);
+        }
+
+        // ============================================================
+        // 重置转盘
+        // ============================================================
+        function resetWheel() {
+            if (isSpinning) return;
+            canvas.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            canvas.style.transform = 'rotate(0deg)';
+            totalRotation = 0;
+            setTimeout(() => {
+                canvas.style.transition = '';
+            }, 700);
+        }
+
+        // ============================================================
+        // 初始化
+        // ============================================================
+        function init() {
+            if (!loadPrizesFromText()) {
+                prizes = [{ name: '一等奖', weight: 50 }, { name: '谢谢参与', weight: 50 }];
+            }
+            renderWeightInputs();
+            drawWheel();
+            prizeCount.textContent = `共 ${prizes.length} 个奖项`;
+
+            spinBtn.addEventListener('click', spinWheel);
+            updateBtn.addEventListener('click', updateWheel);
+            resetBtn.addEventListener('click', resetWheel);
+
+            document.addEventListener('keydown', (e) => {
+                if ((e.key === ' ' || e.key === 'Enter') && !isSpinning) {
+                    e.preventDefault();
+                    spinWheel();
+                }
+            });
+
+            let resizeTimer = null;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    drawWheel();
+                }, 200);
+            });
+
+            prizesInput.addEventListener('input', () => {
+                const raw = prizesInput.value;
+                const names = raw.split(/\r?\n/).map(s => s.trim()).filter(s => s !== '');
+                prizeCount.textContent = `共 ${names.length} 个奖项`;
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            init();
+        }
+    </script>
+
+</body>
+</html>
